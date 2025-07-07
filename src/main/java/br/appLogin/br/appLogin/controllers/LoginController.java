@@ -8,50 +8,40 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.apache.coyote.Response;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
 
-@Controller
+@RestController
 public class LoginController {
 
+    @Autowired
     private UserRepository userRepository;
 
-    @GetMapping("/login")
-    public String login(HttpServletRequest request) {
-        return "login";
-    }
-
     @PostMapping("/logar")
-    public String logar(@Valid UserModel user, HttpServletResponse response) throws UnsupportedEncodingException {
+    public ResponseEntity<?> logar(@RequestBody @Valid UserModel user, HttpServletResponse response) throws UnsupportedEncodingException {
         UserModel userModel = this.userRepository.login(user.getEmail(), user.getSenha());
         if (userModel != null) {
             CookieService.setCookie(response, "userId", String.valueOf(userModel.getId()), 10000);
             CookieService.setCookie(response, "nameUser", String.valueOf(userModel.getNome()), 10000);
-            return "redirect:/";
+            return ResponseEntity.ok(userModel);
         }
-        return "login/login";
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email ou senha invalido");
     }
-
-
-    @GetMapping("/cadastro")
-    public String cadastro() {
-        return "cadastro";
-    }
-
-    @RequestMapping(value = "/cadastro", method = RequestMethod.POST)
-    public String cadastro(@Valid UserModel userModel, BindingResult result) {
-        if (result.hasErrors()) {
-            return "redirect:/cadastro";
+    @PostMapping("/cadastro")
+    public ResponseEntity<?> cadastro(@RequestBody @Valid UserModel userModel) {
+        if (userModel.getNome().isEmpty() || userModel.getSenha().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Nome ou senha invalido");
         }
-        userRepository.save(userModel);
-        return "";
+
+        UserModel savedUser = userRepository.save(userModel);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
 }
